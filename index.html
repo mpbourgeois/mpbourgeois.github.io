@@ -209,7 +209,9 @@ const BGS=[
   'Wildlife · Mpala waterhole, Kenya | https://youtu.be/oORXfTviuCs',
   'Wildlife · Africam safari | https://youtu.be/qpukdDslCjk',
   'Wildlife · Polar bears, Churchill | https://youtu.be/8MoaBHl8U3A',
-  'Wildlife · Cornell bird feeders | https://youtu.be/x10vL6_47Dw',
+  'Wildlife · Cornell feeders, New York | https://youtu.be/x10vL6_47Dw',
+  'Wildlife · Cornell feeders, Ontario | https://youtu.be/wTVDrtShk7Y',
+  'Wildlife · Panama hummingbirds | https://youtu.be/0xFARCdZ3vA',
   'Ocean · Monterey kelp forest | https://youtu.be/w3LjpFhySTg',
   'Ocean · Monterey jellies | https://youtu.be/eQ_foBERmzA',
   'Ocean · Monterey sea otters | https://youtu.be/abbR-Ttd-cA',
@@ -220,6 +222,7 @@ const BGS=[
   'City · Jackson Hole town square | https://youtu.be/1EiC9bvVGnk',
   'City · Abbey Road, London | https://youtu.be/zMCea32gpmg',
   'City · Dublin port ships | https://youtu.be/oxx7MqjhOpw'].join('\n');
+const OLD_BGS=['Space · Sen ISS 4K | channel:UCkvW_7kp9LJrztmgA4q4bJQ','Space · NASA ISS official | https://youtu.be/ROboUHfPUrU','Space · Space Coast launch pads | https://youtu.be/Jm8wRjD3xVA','Wildlife · Namib Desert waterhole | https://youtu.be/ydYDqZQpim8','Wildlife · Etosha waterhole, Namibia | https://youtu.be/AeMUdOPFcXI','Wildlife · Mpala waterhole, Kenya | https://youtu.be/oORXfTviuCs','Wildlife · Africam safari | https://youtu.be/qpukdDslCjk','Wildlife · Polar bears, Churchill | https://youtu.be/8MoaBHl8U3A','Wildlife · Cornell bird feeders | https://youtu.be/x10vL6_47Dw','Ocean · Monterey kelp forest | https://youtu.be/w3LjpFhySTg','Ocean · Monterey jellies | https://youtu.be/eQ_foBERmzA','Ocean · Monterey sea otters | https://youtu.be/abbR-Ttd-cA','Ocean · Caribbean reef | https://youtu.be/jzx_n25g3kA','City · Times Square | https://youtu.be/ZxCeWQ3Lcig','City · Shibuya Crossing, Tokyo | https://youtu.be/dfVK7ld38Ys','City · Rialto Bridge, Venice | https://youtu.be/nviU2HYj-Jc','City · Jackson Hole town square | https://youtu.be/1EiC9bvVGnk','City · Abbey Road, London | https://youtu.be/zMCea32gpmg','City · Dublin port ships | https://youtu.be/oxx7MqjhOpw'].join('\n');
 const DEF={bg:0,bgs:BGS,cal:'',place:null,dim:15,qr:true,feeds:[
   'World | https://feeds.bbci.co.uk/news/world/rss.xml',
   'Nation | https://feeds.npr.org/1001/rss.xml',
@@ -233,7 +236,8 @@ const pad=n=>String(n).padStart(2,'0');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let S={...DEF},firstRun=true;
 try{const saved=localStorage.getItem('campboard');if(saved){Object.assign(S,JSON.parse(saved));firstRun=false}}catch(e){}
-const save=()=>{try{localStorage.setItem('campboard',JSON.stringify(S))}catch(e){}};
+if(!S.bgs||S.bgs===OLD_BGS)S.bgs=BGS;
+const save=()=>{try{localStorage.setItem('campboard',JSON.stringify({...S,bgs:S.bgs===BGS?null:S.bgs}))}catch(e){}};
 
 /* ---------- video ---------- */
 function ytId(u){const m=String(u||'').match(/(?:v=|youtu\.be\/|embed\/|live\/|shorts\/)([\w-]{11})/);return m?m[1]:null}
@@ -241,7 +245,8 @@ function bgList(){return String(S.bgs||BGS).split('\n').map(l=>l.split('|').map(
 function setVideo(){
   const L=bgList(),q='autoplay=1&mute=1&controls=0&playsinline=1&rel=0&iv_load_policy=3&cc_load_policy=0';
   if(!L.length)return;
-  S.bg=((+S.bg||0)%L.length+L.length)%L.length;
+  if(S.bgName){const k=L.findIndex(b=>b.name===S.bgName);if(k>=0)S.bg=k}
+  S.bg=((+S.bg||0)%L.length+L.length)%L.length;S.bgName=L[S.bg].name;
   const b=L[S.bg],ch=b.link.match(/^channel:([\w-]+)/),id=ytId(b.link);
   const src=ch?`https://www.youtube.com/embed/live_stream?channel=${ch[1]}&${q}`:id?`https://www.youtube.com/embed/${id}?${q}`:`https://www.youtube.com/embed/live_stream?channel=${SEN}&${q}`;
   if($('video').src!==src)$('video').src=src;
@@ -249,7 +254,7 @@ function setVideo(){
 }
 let toastT;
 function toast(t){const el=$('toast');el.textContent=t;el.classList.remove('off');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.add('off'),3000)}
-function pickBg(i){const L=bgList();if(!L.length)return;S.bg=((i%L.length)+L.length)%L.length;save();setVideo();toast(L[S.bg].name)}
+function pickBg(i){const L=bgList();if(!L.length)return;S.bg=((i%L.length)+L.length)%L.length;S.bgName=L[S.bg].name;save();setVideo();toast(L[S.bg].name)}
 function nextBg(step){pickBg((+S.bg||0)+step)}
 function openPicker(){
   const L=bgList(),groups=new Map();
@@ -564,7 +569,7 @@ function closeSet(){$('set').hidden=true;$('dim').style.opacity=S.dim/100}
 $('form').addEventListener('submit',ev=>{
   ev.preventDefault();
   const old={...S};
-  const oldList=S.bgs;S.bgs=$('sBgs').value.trim()||BGS;S.bg=S.bgs===oldList?+$('sBg').value:0;S.cal=$('sCal').value.trim();
+  const oldList=S.bgs;S.bgs=$('sBgs').value.trim()||BGS;S.bg=S.bgs===oldList?+$('sBg').value:0;S.bgName='';S.cal=$('sCal').value.trim();
   if(found.length&&!$('sPlaceList').hidden){const p=found[+$('sPlaceList').value];S.place={name:p.name,lat:p.lat,lon:p.lon}}
   S.feeds=$('sFeeds').value.trim()||DEF.feeds;S.dim=+$('sDim').value;S.qr=$('sQr').checked;
   save();closeSet();setVideo();drawQr();
