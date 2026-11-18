@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <style>
 /* VOICE: quiet mission-control ambience, a window onto orbit
    IDEA: an ISS cupola window with a crew status board taped around the frame
@@ -27,36 +28,40 @@ body.idle{cursor:none}
 .scrim.r{right:0;top:0;bottom:0;width:26%;background:linear-gradient(270deg,rgba(0,0,0,.5),transparent)}
 .scrim.t{left:18%;right:18%;top:0;height:24%;background:radial-gradient(ellipse at 50% 0,rgba(0,0,0,.6),transparent 70%)}
 .panel{text-shadow:0 0 .35em rgba(0,0,0,.85),0 .05em .15em rgba(0,0,0,.9)}
-#left{position:absolute;left:2.6%;top:11%;bottom:13%;width:30%;display:flex;flex-direction:column}
-#time{font-weight:300;font-size:13cqh;line-height:.9;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-#time small{font-size:.32em;vertical-align:top;margin-left:.15em;opacity:.75}
-#date{font-size:2.7cqh;color:var(--dim);margin-top:1.2cqh}
-#cal{margin-top:3.5cqh;overflow:hidden;flex:1;-webkit-mask-image:linear-gradient(#000 85%,transparent);mask-image:linear-gradient(#000 85%,transparent)}
-.day{margin-bottom:2cqh}
-.day h3{font-weight:400;font-size:2.5cqh;color:var(--dim);margin-bottom:.7cqh}
-.day h3 b{font-weight:300;font-size:1.5em;color:var(--ink);margin-right:.3em}
-.ev{display:grid;grid-template-columns:8cqh 1fr;gap:1.2cqh;font-size:2.3cqh;line-height:1.25;padding:.35cqh 0 .35cqh 1.1cqh;border-left:.35cqh solid var(--accent)}
-.ev+.ev{margin-top:.7cqh}
+#left{position:absolute;left:2.6%;top:11%;bottom:24%;width:24%;display:flex;flex-direction:column}
+#time{font-weight:300;font-size:7.5cqh;line-height:.9;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+#time small{font-size:.36em;vertical-align:top;margin-left:.15em;opacity:.75}
+#date{font-size:2cqh;color:var(--dim);margin-top:.9cqh}
+#cal{margin-top:2.6cqh;overflow:hidden;flex:1;-webkit-mask-image:linear-gradient(#000 85%,transparent);mask-image:linear-gradient(#000 85%,transparent)}
+.day{margin-bottom:1.4cqh}
+.day h3{font-weight:400;font-size:1.8cqh;color:var(--dim);margin-bottom:.5cqh}
+.day h3 b{font-weight:300;font-size:1.4em;color:var(--ink);margin-right:.3em}
+.ev{display:grid;grid-template-columns:5.6cqh 1fr;gap:1cqh;font-size:1.7cqh;line-height:1.25;padding:.25cqh 0 .25cqh .9cqh;border-left:.3cqh solid var(--accent)}
+.ev+.ev{margin-top:.5cqh}
 .ev span{color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
 .ev strong{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.msg{font-size:2.1cqh;color:var(--dim)}
-#right{position:absolute;right:2.6%;top:11%;width:20%;text-align:right}
-#now{display:flex;justify-content:flex-end;align-items:center;gap:1.6cqh}
-#now .t{font-weight:300;font-size:11cqh;line-height:.9}
-#now svg{width:9cqh;height:9cqh;flex:none}
-#cond{font-size:2.4cqh;margin-top:1cqh}
-#meta{font-size:2.1cqh;color:var(--dim);margin-top:.5cqh;line-height:1.4}
-#days{margin-top:2.8cqh;display:grid;gap:1.3cqh}
-.fd{display:grid;grid-template-columns:1fr 5cqh 5cqh 5cqh;align-items:center;gap:1.2cqh;font-size:2.4cqh;font-variant-numeric:tabular-nums}
+.msg{font-size:1.7cqh;color:var(--dim)}
+#right{position:absolute;right:2.6%;top:11%;width:15%;text-align:right}
+#now{display:flex;justify-content:flex-end;align-items:center;gap:1.2cqh}
+#now .t{font-weight:300;font-size:6.5cqh;line-height:.9}
+#now svg{width:5.5cqh;height:5.5cqh;flex:none}
+#cond{font-size:1.8cqh;margin-top:.8cqh}
+#meta{font-size:1.6cqh;color:var(--dim);margin-top:.4cqh;line-height:1.4}
+#days{margin-top:2cqh;display:grid;gap:.9cqh}
+.fd{display:grid;grid-template-columns:1fr 3.4cqh 3.6cqh 3.6cqh;align-items:center;gap:1cqh;font-size:1.8cqh;font-variant-numeric:tabular-nums}
 .fd b{font-weight:500;text-align:left}
-.fd svg{width:4.6cqh;height:4.6cqh;justify-self:center}
+.fd svg{width:3.2cqh;height:3.2cqh;justify-self:center}
 .fd .lo{color:var(--dim)}
-#news{position:absolute;left:21%;right:21%;top:2.6%;text-align:center;transition:opacity .8s}
+#news{position:absolute;left:22%;right:22%;top:2.6%;text-align:center;transition:opacity .8s}
 #news.fade{opacity:0}
-#src{display:inline-block;font-weight:600;font-size:1.8cqh;padding:.25cqh 1.1cqh;border-radius:2cqh;color:var(--accent);background:rgba(127,211,255,.18)}
-#age{font-size:1.8cqh;color:var(--dim);margin-left:.8cqh}
-#hl{font-weight:500;font-size:3.4cqh;line-height:1.15;margin-top:.9cqh;text-wrap:balance;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-#sum{font-size:2.1cqh;color:var(--dim);margin-top:.7cqh;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#src{display:inline-block;font-weight:600;font-size:1.6cqh;padding:.2cqh 1cqh;border-radius:2cqh;color:var(--accent);background:rgba(127,211,255,.18)}
+#age{font-size:1.6cqh;color:var(--dim);margin-left:.8cqh}
+#hlLink{color:inherit;text-decoration:none;display:block}
+#hlLink[href]:hover #hl{text-decoration:underline;text-decoration-thickness:.06em;text-underline-offset:.15em}
+#hl{font-weight:500;font-size:2.8cqh;line-height:1.15;margin-top:.8cqh;text-wrap:balance;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#sum{font-size:1.7cqh;color:var(--dim);margin-top:.6cqh;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#qr{position:absolute;left:calc(100% + 2cqh);top:.4cqh;width:7cqh;height:7cqh;padding:.45cqh;background:#fff;border-radius:.6cqh;opacity:.9}
+#qr img,#qr canvas{width:100%!important;height:100%!important;display:block}
 #ui{position:fixed;right:16px;bottom:16px;display:flex;gap:8px;transition:opacity .4s}
 body.idle #ui,body.idle #hint{opacity:0;pointer-events:none}
 .btn{height:44px;min-width:44px;padding:0 14px;border-radius:22px;border:1px solid rgba(255,255,255,.25);background:rgba(10,14,20,.7);color:var(--ink);font:500 15px Barlow,sans-serif;cursor:pointer;backdrop-filter:blur(8px)}
@@ -92,8 +97,11 @@ body.idle #ui,body.idle #hint{opacity:0;pointer-events:none}
   </section>
   <section id="news" class="panel">
     <span id="src">News</span><span id="age"></span>
-    <div id="hl">Loading headlines…</div>
-    <div id="sum"></div>
+    <a id="hlLink" target="_blank" rel="noopener">
+      <div id="hl">Loading headlines…</div>
+      <div id="sum"></div>
+    </a>
+    <div id="qr" hidden title="Scan with your phone to open this article"></div>
   </section>
 </div>
 
@@ -101,7 +109,7 @@ body.idle #ui,body.idle #hint{opacity:0;pointer-events:none}
   <button class="btn" id="setBtn" title="Settings (S)">Settings</button>
   <button class="btn" id="fsBtn" title="Fullscreen (F)">Fullscreen</button>
 </div>
-<div id="hint" hidden>Press F for fullscreen · S for settings</div>
+<div id="hint" hidden>F fullscreen · S settings · ← → browse headlines · Enter opens one</div>
 
 <div id="set" hidden>
   <form id="form">
@@ -125,6 +133,9 @@ body.idle #ui,body.idle #hint{opacity:0;pointer-events:none}
       <textarea id="sFeeds" rows="6" spellcheck="false"></textarea>
       <span class="note">One per line: Label | RSS feed URL. Headlines rotate every 20 seconds, alternating between sources. A source that never shows up has a broken feed address.</span>
     </label>
+    <label style="display:flex;align-items:center;gap:10px;font-weight:400">
+      <input id="sQr" type="checkbox" style="width:20px;height:20px"> Show a QR code next to each headline, so you can open it on your phone
+    </label>
     <label>Video dimming
       <input id="sDim" type="range" min="0" max="70">
     </label>
@@ -137,7 +148,7 @@ body.idle #ui,body.idle #hint{opacity:0;pointer-events:none}
 
 <script>
 {
-const DEF={video:'',cal:'',place:null,dim:15,feeds:[
+const DEF={video:'',cal:'',place:null,dim:15,qr:true,feeds:[
   'World | https://feeds.bbci.co.uk/news/world/rss.xml',
   'Nation | https://feeds.npr.org/1001/rss.xml',
   'Army | https://www.armytimes.com/feed/',
@@ -220,12 +231,13 @@ function feeds(){return S.feeds.split('\n').map(l=>l.split('|').map(s=>s.trim())
 async function getFeed(f){
   try{
     const j=await (await fetch('https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(f.url))).json();
-    if(j.status==='ok'&&j.items?.length)return j.items.slice(0,8).map(x=>({t:strip(x.title),s:strip(x.description),d:new Date(String(x.pubDate||'').replace(' ','T')+'Z')}));
+    if(j.status==='ok'&&j.items?.length)return j.items.slice(0,8).map(x=>({t:strip(x.title),s:strip(x.description),u:x.link||'',d:new Date(String(x.pubDate||'').replace(' ','T')+'Z')}));
   }catch(e){}
   try{
     const doc=new DOMParser().parseFromString(await relay(f.url),'text/xml');
     const its=[...doc.querySelectorAll('item,entry')].slice(0,8);
-    if(its.length)return its.map(it=>({t:strip(tag(it,'title')),s:strip(tag(it,'description')||tag(it,'summary')),d:new Date(tag(it,'pubDate')||tag(it,'updated')||tag(it,'published'))}));
+    const lk=it=>{const l=it.getElementsByTagName('link')[0];return l?(l.getAttribute('href')||l.textContent||'').trim():''};
+    if(its.length)return its.map(it=>({t:strip(tag(it,'title')),s:strip(tag(it,'description')||tag(it,'summary')),u:lk(it),d:new Date(tag(it,'pubDate')||tag(it,'updated')||tag(it,'published'))}));
   }catch(e){}
   return [];
 }
@@ -233,22 +245,39 @@ async function loadNews(){
   const fs=feeds(),res=await Promise.all(fs.map(getFeed)),out=[];
   const max=Math.max(0,...res.map(r=>r.length));
   for(let k=0;k<max;k++)res.forEach((r,i)=>{if(r[k]&&r[k].t)out.push({...r[k],f:fs[i]})});
-  if(out.length){const fresh=!items.length;items=out;ni=0;if(fresh)showNews()}
+  if(out.length){const fresh=!items.length;items=out;ni=-1;if(fresh)showNews(1,true)}
   else if(!items.length){$('hl').textContent='Headlines unavailable. Check the feeds in Settings.'}
 }
 function ago(d){const m=Math.round((Date.now()-d)/6e4);if(!isFinite(m)||m<0)return'';if(m<60)return m+' min ago';const h=Math.round(m/60);return h<48?h+' hr ago':Math.round(h/24)+' days ago'}
-function showNews(){
+let cur=null,newsT=null,qrObj=null,hovering=false;
+function drawQr(){
+  const show=S.qr&&cur&&/^https?:/.test(cur.u)&&window.QRCode;
+  $('qr').hidden=!show;
+  if(!show)return;
+  try{
+    if(!qrObj)qrObj=new QRCode($('qr'),{text:cur.u,width:256,height:256,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+    else qrObj.makeCode(cur.u);
+  }catch(e){$('qr').hidden=true}
+}
+function showNews(step=1,quick=false){
   if(!items.length)return;
+  clearTimeout(newsT);
+  newsT=setTimeout(()=>{if(!hovering)showNews()},20e3);
   const n=$('news');n.classList.add('fade');
   setTimeout(()=>{
-    const it=items[ni%items.length];ni++;
+    ni=((ni+step)%items.length+items.length)%items.length;
+    const it=cur=items[ni];
     const s=$('src');s.textContent=it.f.label;s.style.color=it.f.color;s.style.background=it.f.color+'2e';
     $('age').textContent=ago(it.d);
     $('hl').textContent=it.t;
     $('sum').textContent=it.s.length>240?it.s.slice(0,237).replace(/\s\S*$/,'')+'…':it.s;
+    const a=$('hlLink');if(/^https?:/.test(it.u)){a.href=it.u;a.title='Open article'}else{a.removeAttribute('href');a.removeAttribute('title')}
+    drawQr();
     n.classList.remove('fade');
-  },800);
+  },quick?150:800);
 }
+$('news').addEventListener('mouseenter',()=>{hovering=true});
+$('news').addEventListener('mouseleave',()=>{hovering=false;clearTimeout(newsT);newsT=setTimeout(()=>showNews(),20e3)});
 
 /* ---------- calendar ---------- */
 //ICS-START
@@ -361,7 +390,7 @@ function renderCal(){
 
 /* ---------- settings, fullscreen, idle ---------- */
 let found=[];
-function openSet(){$('sVideo').value=S.video;$('sCal').value=S.cal;$('sPlace').value=S.place?S.place.name:'';$('sPlaceList').hidden=true;found=[];$('placeNote').textContent='Saved only in this browser, never in the page file.';$('sFeeds').value=S.feeds;$('sDim').value=S.dim;$('set').hidden=false;$('sVideo').focus()}
+function openSet(){$('sVideo').value=S.video;$('sCal').value=S.cal;$('sPlace').value=S.place?S.place.name:'';$('sPlaceList').hidden=true;found=[];$('placeNote').textContent='Saved only in this browser, never in the page file.';$('sFeeds').value=S.feeds;$('sDim').value=S.dim;$('sQr').checked=S.qr!==false;$('set').hidden=false;$('sVideo').focus()}
 async function findPlace(){
   const q=$('sPlace').value.split(',')[0].trim();if(!q)return;
   $('placeNote').textContent='Searching…';
@@ -382,8 +411,8 @@ $('form').addEventListener('submit',ev=>{
   const old={...S};
   S.video=$('sVideo').value.trim();S.cal=$('sCal').value.trim();
   if(found.length&&!$('sPlaceList').hidden){const p=found[+$('sPlaceList').value];S.place={name:p.name,lat:p.lat,lon:p.lon}}
-  S.feeds=$('sFeeds').value.trim()||DEF.feeds;S.dim=+$('sDim').value;
-  save();closeSet();setVideo();
+  S.feeds=$('sFeeds').value.trim()||DEF.feeds;S.dim=+$('sDim').value;S.qr=$('sQr').checked;
+  save();closeSet();setVideo();drawQr();
   if(JSON.stringify(old.place)!==JSON.stringify(S.place))weather();
   if(old.cal!==S.cal)loadCal();
   if(old.feeds!==S.feeds){items=[];loadNews()}
@@ -407,6 +436,9 @@ addEventListener('keydown',e=>{
   if(!$('set').hidden){if(e.key==='Escape')closeSet();return}
   if(e.key==='f'||e.key==='F')toggleFS();
   if(e.key==='s'||e.key==='S')openSet();
+  if(e.key==='ArrowRight')showNews(1,true);
+  if(e.key==='ArrowLeft')showNews(-1,true);
+  if(e.key==='Enter'&&cur&&/^https?:/.test(cur.u))window.open(cur.u,'_blank','noopener');
 });
 addEventListener('click',wake,{once:true});
 let idleT;
@@ -417,7 +449,7 @@ const act=()=>{document.body.classList.remove('idle');clearTimeout(idleT);idleT=
 setVideo();tick();act();
 setInterval(tick,1000);
 weather();setInterval(weather,15*6e4);
-loadNews();setInterval(loadNews,20*6e4);setInterval(showNews,20e3);
+loadNews();setInterval(loadNews,20*6e4);
 loadCal();setInterval(loadCal,15*6e4);setInterval(renderCal,6e4);
 if(firstRun){$('hint').hidden=false;setTimeout(()=>{$('hint').hidden=true},10000)}
 }
