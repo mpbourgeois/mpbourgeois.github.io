@@ -77,6 +77,27 @@ body.idle #ui,body.idle #hint{opacity:0;pointer-events:none}
 .note{font-size:13px;color:var(--dim);font-weight:400;line-height:1.45}
 .row{display:flex;gap:10px;justify-content:flex-end}
 .row .go{background:var(--accent);color:#04121c;border-color:var(--accent)}
+#right{cursor:pointer}
+#alert{position:absolute;left:28%;right:28%;bottom:17%;display:flex;align-items:center;gap:1.4cqh;padding:1cqh 1.8cqh;border-radius:1cqh;background:rgba(190,20,20,.88);box-shadow:0 0 0 .2cqh rgba(255,255,255,.25),0 .6cqh 3cqh rgba(0,0,0,.5);color:#fff;text-decoration:none;font-size:1.9cqh;line-height:1.25;animation:pulse 2.4s ease-in-out infinite}
+#alert.watch{background:rgba(196,120,0,.9)}
+#alert.advisory{background:rgba(70,80,95,.88);animation:none}
+#alert b{font-weight:600;font-size:1.15em;display:block}
+#alert svg{width:4cqh;height:4cqh;flex:none}
+@keyframes pulse{50%{box-shadow:0 0 0 .5cqh rgba(255,90,90,.35),0 .6cqh 3cqh rgba(0,0,0,.5)}}
+@media (prefers-reduced-motion:reduce){#alert{animation:none}}
+#toast{position:fixed;left:50%;top:22px;transform:translateX(-50%);background:rgba(10,14,20,.85);padding:10px 20px;border-radius:22px;font-size:17px;font-weight:500;transition:opacity .4s;pointer-events:none;z-index:4}
+#toast.off{opacity:0}
+#radar{position:fixed;inset:0;z-index:4;background:rgba(0,0,0,.55);display:grid;place-items:center;cursor:auto}
+#radarBox{position:relative;width:min(92vw,150vh);height:min(84vh,52vw);border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.15);background:#0b0f14}
+#rmap{position:absolute;inset:0}
+#rbar{position:absolute;left:12px;right:12px;top:12px;display:flex;gap:8px;align-items:center;z-index:500;pointer-events:none}
+#rbar>*{pointer-events:auto}
+#rtime{background:rgba(10,14,20,.8);padding:8px 14px;border-radius:20px;font-size:15px;font-variant-numeric:tabular-nums;margin-right:auto}
+#rbar a.btn{display:inline-flex;align-items:center;text-decoration:none}
+.leaflet-container{background:#0b0f14;font:12px Barlow,sans-serif}
+.leaflet-control-attribution{background:rgba(10,14,20,.7)!important;color:#aab!important}
+.leaflet-control-attribution a{color:#cde!important}
+#set select{appearance:auto}
 </style>
 </head>
 <body>
@@ -103,21 +124,38 @@ body.idle #ui,body.idle #hint{opacity:0;pointer-events:none}
     </a>
     <div id="qr" hidden title="Scan with your phone to open this article"></div>
   </section>
+  <a id="alert" class="panel" hidden target="_blank" rel="noopener"></a>
+</div>
+<div id="toast" class="off"></div>
+<div id="radar" hidden>
+  <div id="radarBox">
+    <div id="rmap"></div>
+    <div id="rbar">
+      <span id="rtime">Loading radar…</span>
+      <a class="btn" id="rfull" target="_blank" rel="noopener">Full forecast</a>
+      <button class="btn" id="rclose" type="button">Close</button>
+    </div>
+  </div>
 </div>
 
 <div id="ui">
   <button class="btn" id="setBtn" title="Settings (S)">Settings</button>
   <button class="btn" id="fsBtn" title="Fullscreen (F)">Fullscreen</button>
 </div>
-<div id="hint" hidden>F fullscreen · S settings · ← → browse headlines · Enter opens one</div>
+<div id="hint" hidden>F fullscreen · S settings · B next background · R radar · ← → headlines · Enter opens one</div>
 
 <div id="set" hidden>
   <form id="form">
     <h2>Settings</h2>
-    <label>Video link
-      <input id="sVideo" autocomplete="off" placeholder="Leave blank for Sen's live ISS feed">
-      <span class="note">Blank follows Sen's live stream automatically. If it won't play, paste the link from the Sen YouTube tab's address bar.</span>
+    <label>Background
+      <select id="sBg"></select>
+      <span class="note">Press B to go to the next one, Shift+B to go back.</span>
     </label>
+    <details>
+      <summary class="note" style="cursor:pointer">Edit the background list</summary>
+      <textarea id="sBgs" rows="10" spellcheck="false" style="margin-top:8px"></textarea>
+      <span class="note">One per line: Name | YouTube link. Live cams sometimes restart under a new link; if one stops working, find it on YouTube and paste the new link here.</span>
+    </details>
     <label>Calendar link (iCal)
       <input id="sCal" autocomplete="off" placeholder="webcal://p…-caldav.icloud.com/published/…">
       <span class="note">Saved only in this browser, never in the page file. iCloud blocks websites from reading calendars directly, so the page fetches it through a free relay service (r.jina.ai, with allorigins.win as backup). A separate calendar just for this screen keeps private events off it.</span>
@@ -148,7 +186,27 @@ body.idle #ui,body.idle #hint{opacity:0;pointer-events:none}
 
 <script>
 {
-const DEF={video:'',cal:'',place:null,dim:15,qr:true,feeds:[
+const BGS=[
+  'Space · Sen ISS 4K | channel:UCkvW_7kp9LJrztmgA4q4bJQ',
+  'Space · NASA ISS official | https://youtu.be/ROboUHfPUrU',
+  'Space · Space Coast launch pads | https://youtu.be/Jm8wRjD3xVA',
+  'Wildlife · Namib Desert waterhole | https://youtu.be/ydYDqZQpim8',
+  'Wildlife · Etosha waterhole, Namibia | https://youtu.be/AeMUdOPFcXI',
+  'Wildlife · Mpala waterhole, Kenya | https://youtu.be/oORXfTviuCs',
+  'Wildlife · Africam safari | https://youtu.be/qpukdDslCjk',
+  'Wildlife · Polar bears, Churchill | https://youtu.be/8MoaBHl8U3A',
+  'Wildlife · Cornell bird feeders | https://youtu.be/x10vL6_47Dw',
+  'Ocean · Monterey kelp forest | https://youtu.be/w3LjpFhySTg',
+  'Ocean · Monterey jellies | https://youtu.be/eQ_foBERmzA',
+  'Ocean · Monterey sea otters | https://youtu.be/abbR-Ttd-cA',
+  'Ocean · Caribbean reef | https://youtu.be/jzx_n25g3kA',
+  'City · Times Square | https://youtu.be/ZxCeWQ3Lcig',
+  'City · Shibuya Crossing, Tokyo | https://youtu.be/dfVK7ld38Ys',
+  'City · Rialto Bridge, Venice | https://youtu.be/nviU2HYj-Jc',
+  'City · Jackson Hole town square | https://youtu.be/1EiC9bvVGnk',
+  'City · Abbey Road, London | https://youtu.be/zMCea32gpmg',
+  'City · Dublin port ships | https://youtu.be/oxx7MqjhOpw'].join('\n');
+const DEF={bg:0,bgs:BGS,cal:'',place:null,dim:15,qr:true,feeds:[
   'World | https://feeds.bbci.co.uk/news/world/rss.xml',
   'Nation | https://feeds.npr.org/1001/rss.xml',
   'Army | https://www.armytimes.com/feed/',
@@ -165,12 +223,19 @@ const save=()=>{try{localStorage.setItem('campboard',JSON.stringify(S))}catch(e)
 
 /* ---------- video ---------- */
 function ytId(u){const m=String(u||'').match(/(?:v=|youtu\.be\/|embed\/|live\/|shorts\/)([\w-]{11})/);return m?m[1]:null}
+function bgList(){return String(S.bgs||BGS).split('\n').map(l=>l.split('|').map(s=>s.trim())).filter(a=>a[1]).map(a=>({name:a[0]||'Background',link:a[1]}))}
 function setVideo(){
-  const id=ytId(S.video),q='autoplay=1&mute=1&controls=0&playsinline=1&rel=0&iv_load_policy=3';
-  const src=id?`https://www.youtube.com/embed/${id}?${q}`:`https://www.youtube.com/embed/live_stream?channel=${SEN}&${q}`;
+  const L=bgList(),q='autoplay=1&mute=1&controls=0&playsinline=1&rel=0&iv_load_policy=3&cc_load_policy=0';
+  if(!L.length)return;
+  S.bg=((+S.bg||0)%L.length+L.length)%L.length;
+  const b=L[S.bg],ch=b.link.match(/^channel:([\w-]+)/),id=ytId(b.link);
+  const src=ch?`https://www.youtube.com/embed/live_stream?channel=${ch[1]}&${q}`:id?`https://www.youtube.com/embed/${id}?${q}`:`https://www.youtube.com/embed/live_stream?channel=${SEN}&${q}`;
   if($('video').src!==src)$('video').src=src;
   $('dim').style.opacity=S.dim/100;
 }
+let toastT;
+function toast(t){const el=$('toast');el.textContent=t;el.classList.remove('off');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.add('off'),3000)}
+function nextBg(step){const L=bgList();if(!L.length)return;S.bg=((+S.bg||0)+step+L.length)%L.length;save();setVideo();toast(L[S.bg].name)}
 setInterval(()=>{const f=$('video'),s=f.src;f.src='about:blank';setTimeout(()=>{f.src=s},800)},6*3600e3);
 
 /* ---------- clock ---------- */
@@ -214,6 +279,68 @@ async function weather(){
     $('days').innerHTML=dl.time.map((t,i)=>`<div class="fd"><b>${i?new Date(t+'T12:00').toLocaleDateString('en-US',{weekday:'short'}):'Today'}</b>${wIcon(dl.weather_code[i],1)}<span>${Math.round(dl.temperature_2m_max[i])}°</span><span class="lo">${Math.round(dl.temperature_2m_min[i])}°</span></div>`).join('');
   }catch(e){$('cond').textContent='Weather unavailable, retrying'}
 }
+
+/* ---------- severe weather alerts (National Weather Service) ---------- */
+const WARN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>';
+const nwsLink=()=>S.place?`https://forecast.weather.gov/MapClick.php?lat=${S.place.lat.toFixed(4)}&lon=${S.place.lon.toFixed(4)}`:'https://www.weather.gov/';
+async function alerts(){
+  const a=$('alert');
+  if(!S.place){a.hidden=true;return}
+  try{
+    const r=await fetch(`https://api.weather.gov/alerts/active?point=${S.place.lat.toFixed(4)},${S.place.lon.toFixed(4)}`,{headers:{Accept:'application/geo+json'}});
+    if(!r.ok){a.hidden=true;return}
+    const rank=p=>/Warning|Emergency/i.test(p.event)?3:/Watch/i.test(p.event)?2:1;
+    const list=((await r.json()).features||[]).map(f=>f.properties).filter(p=>p.status==='Actual'&&p.messageType!=='Cancel')
+      .sort((x,y)=>rank(y)-rank(x)||({Extreme:4,Severe:3,Moderate:2,Minor:1}[y.severity]||0)-({Extreme:4,Severe:3,Moderate:2,Minor:1}[x.severity]||0));
+    if(!list.length){a.hidden=true;return}
+    const p=list[0],k=rank(p),end=p.ends||p.expires;
+    const until=end?' until '+new Date(end).toLocaleString('en-US',{weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}):'';
+    a.className=k===3?'panel':k===2?'panel watch':'panel advisory';
+    a.href=nwsLink();
+    const area=String(p.areaDesc||'').split(';')[0].trim(),more=list.length>1?` · +${list.length-1} more`:'';
+    a.innerHTML=`${WARN}<span><b>${esc(p.event)}${esc(until)}</b>${esc(area)}${more} · click for details</span>`;
+    a.hidden=false;
+  }catch(e){}
+}
+
+/* ---------- radar (RainViewer on a Leaflet map) ---------- */
+let map=null,frames=[],fi=0,rTimer=null,rClose=null;
+function loadLeaflet(){
+  if(window.L)return Promise.resolve();
+  return new Promise((ok,no)=>{
+    const c=document.createElement('link');c.rel='stylesheet';c.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(c);
+    const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s);
+  });
+}
+async function openRadar(){
+  if(!S.place){toast('Set your weather location in Settings first');return}
+  $('radar').hidden=false;$('rfull').href=nwsLink();
+  clearTimeout(rClose);rClose=setTimeout(closeRadar,3*6e4);
+  try{
+    await loadLeaflet();
+    if(!map){
+      map=L.map('rmap',{zoomControl:false,attributionControl:true,maxZoom:10,minZoom:4});
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:10,attribution:'Basemap © Esri · Radar © RainViewer'}).addTo(map);
+      map.createPane('labels');map.getPane('labels').style.zIndex=650;map.getPane('labels').style.pointerEvents='none';
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:10,pane:'labels'}).addTo(map);
+    }
+    map.setView([S.place.lat,S.place.lon],7);
+    setTimeout(()=>map.invalidateSize(),50);
+    if(!map._pin){map._pin=L.circleMarker([S.place.lat,S.place.lon],{radius:6,color:'#fff',weight:2,fillColor:'#7fd3ff',fillOpacity:1}).addTo(map)}else map._pin.setLatLng([S.place.lat,S.place.lon]);
+    const j=await (await fetch('https://api.rainviewer.com/public/weather-maps.json')).json();
+    frames.forEach(f=>map.removeLayer(f.layer));
+    frames=(j.radar.past||[]).concat(j.radar.nowcast||[]).map(f=>({time:f.time,layer:L.tileLayer(`${j.host}${f.path}/256/{z}/{x}/{y}/2/1_1.png`,{opacity:0,maxNativeZoom:7,maxZoom:10,zIndex:5}).addTo(map)}));
+    fi=frames.length-1;clearInterval(rTimer);
+    const show=()=>{frames.forEach((f,i)=>f.layer.setOpacity(i===fi?.75:0));const t=new Date(frames[fi].time*1000);$('rtime').textContent='Radar '+pad(t.getHours())+':'+pad(t.getMinutes())};
+    show();
+    let hold=0;
+    rTimer=setInterval(()=>{if(fi===frames.length-1&&hold++<3)return;hold=0;fi=(fi+1)%frames.length;show()},500);
+  }catch(e){$('rtime').textContent='Radar unavailable right now'}
+}
+function closeRadar(){$('radar').hidden=true;clearInterval(rTimer);clearTimeout(rClose)}
+$('right').addEventListener('click',openRadar);
+$('rclose').addEventListener('click',closeRadar);
+$('radar').addEventListener('click',e=>{if(e.target.id==='radar')closeRadar()});
 
 /* ---------- relay for sites that block direct reads ---------- */
 async function relay(url){
@@ -390,7 +517,7 @@ function renderCal(){
 
 /* ---------- settings, fullscreen, idle ---------- */
 let found=[];
-function openSet(){$('sVideo').value=S.video;$('sCal').value=S.cal;$('sPlace').value=S.place?S.place.name:'';$('sPlaceList').hidden=true;found=[];$('placeNote').textContent='Saved only in this browser, never in the page file.';$('sFeeds').value=S.feeds;$('sDim').value=S.dim;$('sQr').checked=S.qr!==false;$('set').hidden=false;$('sVideo').focus()}
+function openSet(){const L=bgList();$('sBg').innerHTML=L.map((b,i)=>`<option value="${i}">${esc(b.name)}</option>`).join('');$('sBg').value=S.bg||0;$('sBgs').value=S.bgs||BGS;$('sCal').value=S.cal;$('sPlace').value=S.place?S.place.name:'';$('sPlaceList').hidden=true;found=[];$('placeNote').textContent='Saved only in this browser, never in the page file.';$('sFeeds').value=S.feeds;$('sDim').value=S.dim;$('sQr').checked=S.qr!==false;$('set').hidden=false;$('sBg').focus()}
 async function findPlace(){
   const q=$('sPlace').value.split(',')[0].trim();if(!q)return;
   $('placeNote').textContent='Searching…';
@@ -409,11 +536,11 @@ function closeSet(){$('set').hidden=true;$('dim').style.opacity=S.dim/100}
 $('form').addEventListener('submit',ev=>{
   ev.preventDefault();
   const old={...S};
-  S.video=$('sVideo').value.trim();S.cal=$('sCal').value.trim();
+  const oldList=S.bgs;S.bgs=$('sBgs').value.trim()||BGS;S.bg=S.bgs===oldList?+$('sBg').value:0;S.cal=$('sCal').value.trim();
   if(found.length&&!$('sPlaceList').hidden){const p=found[+$('sPlaceList').value];S.place={name:p.name,lat:p.lat,lon:p.lon}}
   S.feeds=$('sFeeds').value.trim()||DEF.feeds;S.dim=+$('sDim').value;S.qr=$('sQr').checked;
   save();closeSet();setVideo();drawQr();
-  if(JSON.stringify(old.place)!==JSON.stringify(S.place))weather();
+  if(JSON.stringify(old.place)!==JSON.stringify(S.place)){weather();alerts()}
   if(old.cal!==S.cal)loadCal();
   if(old.feeds!==S.feeds){items=[];loadNews()}
 });
@@ -434,6 +561,10 @@ function toggleFS(){
 $('fsBtn').addEventListener('click',toggleFS);
 addEventListener('keydown',e=>{
   if(!$('set').hidden){if(e.key==='Escape')closeSet();return}
+  if(!$('radar').hidden&&(e.key==='Escape'||e.key==='r'||e.key==='R')){closeRadar();return}
+  if(e.key==='b')nextBg(1);
+  if(e.key==='B')nextBg(-1);
+  if(e.key==='r'||e.key==='R')openRadar();
   if(e.key==='f'||e.key==='F')toggleFS();
   if(e.key==='s'||e.key==='S')openSet();
   if(e.key==='ArrowRight')showNews(1,true);
@@ -449,6 +580,7 @@ const act=()=>{document.body.classList.remove('idle');clearTimeout(idleT);idleT=
 setVideo();tick();act();
 setInterval(tick,1000);
 weather();setInterval(weather,15*6e4);
+alerts();setInterval(alerts,3*6e4);
 loadNews();setInterval(loadNews,20*6e4);
 loadCal();setInterval(loadCal,15*6e4);setInterval(renderCal,6e4);
 if(firstRun){$('hint').hidden=false;setTimeout(()=>{$('hint').hidden=true},10000)}
