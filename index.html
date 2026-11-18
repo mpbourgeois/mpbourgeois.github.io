@@ -112,7 +112,7 @@ body.idle #ui,body.idle #hint{opacity:0;pointer-events:none}
     </label>
     <label>Calendar link (iCal)
       <input id="sCal" autocomplete="off" placeholder="webcal://p…-caldav.icloud.com/published/…">
-      <span class="note">Saved only in this browser, never in the page file. iCloud blocks websites from reading calendars directly, so the page fetches it through a free relay service (allorigins.win). A separate calendar just for this screen keeps private events off it.</span>
+      <span class="note">Saved only in this browser, never in the page file. iCloud blocks websites from reading calendars directly, so the page fetches it through a free relay service (r.jina.ai, with allorigins.win as backup). A separate calendar just for this screen keeps private events off it.</span>
     </label>
     <label for="sPlace">Weather location</label>
     <div class="row" style="justify-content:stretch;margin-top:-10px">
@@ -333,6 +333,7 @@ async function loadCal(){
   const url=S.cal.trim().replace(/^webcal:/i,'https:');
   let txt='';
   try{const r=await fetch(url);if(r.ok)txt=await r.text()}catch(e){}
+  if(!txt.includes('BEGIN:VCALENDAR')){try{const r=await fetch('https://r.jina.ai/'+url,{headers:{'X-Return-Format':'text','X-No-Cache':'true'}});if(r.ok)txt=await r.text()}catch(e){}}
   if(!txt.includes('BEGIN:VCALENDAR')){try{txt=await relay(url)}catch(e){}}
   if(txt.includes('BEGIN:VCALENDAR')){evs=parseICS(txt);calState='ok'}
   else if(!evs.length)calState='err';
