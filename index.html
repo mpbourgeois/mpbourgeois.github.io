@@ -98,6 +98,18 @@ body.idle #ui,body.idle #hint{opacity:0;pointer-events:none}
 .leaflet-control-attribution{background:rgba(10,14,20,.7)!important;color:#aab!important}
 .leaflet-control-attribution a{color:#cde!important}
 #set select{appearance:auto}
+#picker{position:fixed;inset:0;z-index:4;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:grid;place-items:center;cursor:auto}
+#pbox{width:min(1180px,94vw);max-height:90vh;overflow:auto;background:#11161c;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:20px 24px 24px}
+#ptop{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+#ptop h2{font-weight:500;font-size:22px;margin-right:auto}
+#pgrid h3{font-weight:500;font-size:16px;color:var(--dim);margin:18px 0 10px}
+.pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.pc{display:block;text-align:left;padding:0;border:2px solid transparent;border-radius:10px;background:#0a0e13;color:var(--ink);font:500 15px Barlow,sans-serif;cursor:pointer;overflow:hidden}
+.pc:hover,.pc:focus-visible{border-color:rgba(127,211,255,.6);outline:none}
+.pc.on{border-color:var(--accent)}
+.pc i{display:block;aspect-ratio:16/9;background:linear-gradient(135deg,#0b1a33,#1d3b6b 55%,#4a7fb5) center/cover no-repeat}
+.pc span{display:block;padding:8px 10px 10px;line-height:1.3}
+.pc.on span::after{content:' · playing';color:var(--accent);font-weight:400}
 </style>
 </head>
 <body>
@@ -139,17 +151,19 @@ body.idle #ui,body.idle #hint{opacity:0;pointer-events:none}
 </div>
 
 <div id="ui">
+  <button class="btn" id="bgBtn" title="Backgrounds (B)">Backgrounds</button>
   <button class="btn" id="setBtn" title="Settings (S)">Settings</button>
   <button class="btn" id="fsBtn" title="Fullscreen (F)">Fullscreen</button>
 </div>
-<div id="hint" hidden>F fullscreen · S settings · B next background · R radar · ← → headlines · Enter opens one</div>
+<div id="hint" hidden>F fullscreen · S settings · B backgrounds · R radar · ← → headlines · Enter opens one</div>
+<div id="picker" hidden><div id="pbox"><div id="ptop"><h2>Backgrounds</h2><button class="btn" id="pclose" type="button">Close</button></div><div id="pgrid"></div></div></div>
 
 <div id="set" hidden>
   <form id="form">
     <h2>Settings</h2>
     <label>Background
       <select id="sBg"></select>
-      <span class="note">Press B to go to the next one, Shift+B to go back.</span>
+      <span class="note">Or press B anywhere to pick from thumbnails. ] and [ step forward and back.</span>
     </label>
     <details>
       <summary class="note" style="cursor:pointer">Edit the background list</summary>
@@ -235,7 +249,21 @@ function setVideo(){
 }
 let toastT;
 function toast(t){const el=$('toast');el.textContent=t;el.classList.remove('off');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.add('off'),3000)}
-function nextBg(step){const L=bgList();if(!L.length)return;S.bg=((+S.bg||0)+step+L.length)%L.length;save();setVideo();toast(L[S.bg].name)}
+function pickBg(i){const L=bgList();if(!L.length)return;S.bg=((i%L.length)+L.length)%L.length;save();setVideo();toast(L[S.bg].name)}
+function nextBg(step){pickBg((+S.bg||0)+step)}
+function openPicker(){
+  const L=bgList(),groups=new Map();
+  L.forEach((b,i)=>{const k=b.name.includes(' · ')?b.name.split(' · ')[0]:'Other';const n=b.name.includes(' · ')?b.name.split(' · ').slice(1).join(' · '):b.name;if(!groups.has(k))groups.set(k,[]);groups.get(k).push({i,n,id:ytId(b.link)})});
+  const t=Date.now();
+  $('pgrid').innerHTML=[...groups].map(([k,arr])=>`<h3>${esc(k)}</h3><div class="pg">${arr.map(b=>`<button type="button" class="pc${b.i===+S.bg?' on':''}" data-i="${b.i}"><i${b.id?` style="background-image:url('https://i.ytimg.com/vi/${b.id}/hqdefault_live.jpg?t=${t}'),url('https://i.ytimg.com/vi/${b.id}/hqdefault.jpg')"`:''}></i><span>${esc(b.n)}</span></button>`).join('')}</div>`).join('');
+  $('picker').hidden=false;
+  ($('pgrid').querySelector('.pc.on')||$('pgrid').querySelector('.pc'))?.focus();
+}
+function closePicker(){$('picker').hidden=true}
+$('pgrid').addEventListener('click',e=>{const c=e.target.closest('.pc');if(c){pickBg(+c.dataset.i);closePicker()}});
+$('pclose').addEventListener('click',closePicker);
+$('picker').addEventListener('click',e=>{if(e.target.id==='picker')closePicker()});
+$('bgBtn').addEventListener('click',openPicker);
 setInterval(()=>{const f=$('video'),s=f.src;f.src='about:blank';setTimeout(()=>{f.src=s},800)},6*3600e3);
 
 /* ---------- clock ---------- */
@@ -562,8 +590,10 @@ $('fsBtn').addEventListener('click',toggleFS);
 addEventListener('keydown',e=>{
   if(!$('set').hidden){if(e.key==='Escape')closeSet();return}
   if(!$('radar').hidden&&(e.key==='Escape'||e.key==='r'||e.key==='R')){closeRadar();return}
-  if(e.key==='b')nextBg(1);
-  if(e.key==='B')nextBg(-1);
+  if(!$('picker').hidden){if(e.key==='Escape'||e.key==='b'||e.key==='B')closePicker();return}
+  if(e.key==='b'||e.key==='B')openPicker();
+  if(e.key===']')nextBg(1);
+  if(e.key==='[')nextBg(-1);
   if(e.key==='r'||e.key==='R')openRadar();
   if(e.key==='f'||e.key==='F')toggleFS();
   if(e.key==='s'||e.key==='S')openSet();
@@ -573,7 +603,7 @@ addEventListener('keydown',e=>{
 });
 addEventListener('click',wake,{once:true});
 let idleT;
-const act=()=>{document.body.classList.remove('idle');clearTimeout(idleT);idleT=setTimeout(()=>{if($('set').hidden)document.body.classList.add('idle')},3000)};
+const act=()=>{document.body.classList.remove('idle');clearTimeout(idleT);idleT=setTimeout(()=>{if($('set').hidden&&$('picker').hidden&&$('radar').hidden)document.body.classList.add('idle')},3000)};
 ['mousemove','mousedown','keydown'].forEach(n=>addEventListener(n,act));
 
 /* ---------- start ---------- */
