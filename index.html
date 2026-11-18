@@ -252,12 +252,23 @@ function showNews(){
 
 /* ---------- calendar ---------- */
 //ICS-START
-function icsDate(v){
+const FMT=new Map();
+function zoned(y,mo,d,h,mi,s,tz){
+  try{
+    if(!FMT.has(tz))FMT.set(tz,new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+    const f=FMT.get(tz);
+    const off=t=>{const p={};for(const x of f.formatToParts(new Date(t)))p[x.type]=+x.value;return Date.UTC(p.year,p.month-1,p.day,p.hour%24,p.minute,p.second)-t};
+    const g=Date.UTC(y,mo-1,d,h,mi,s);let t=g-off(g);t=g-off(t);
+    return new Date(t);
+  }catch(e){return new Date(y,mo-1,d,h,mi,s)}
+}
+function icsDate(v,tz){
   const m=String(v).match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?/);
   if(!m)return{t:new Date(NaN),all:false};
   const[,y,mo,d,h,mi,s,z]=m;
   if(h===undefined)return{t:new Date(+y,mo-1,+d),all:true};
-  return{t:z?new Date(Date.UTC(+y,mo-1,+d,+h,+mi,+s)):new Date(+y,mo-1,+d,+h,+mi,+s),all:false};
+  if(z)return{t:new Date(Date.UTC(+y,mo-1,+d,+h,+mi,+s)),all:false};
+  return{t:tz?zoned(+y,+mo,+d,+h,+mi,+s,tz):new Date(+y,mo-1,+d,+h,+mi,+s),all:false};
 }
 function durMs(s){const m=String(s).match(/P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?/);return m?(+m[1]||0)*6048e5+(+m[2]||0)*864e5+(+m[3]||0)*36e5+(+m[4]||0)*6e4+(+m[5]||0)*1e3:0}
 function parseICS(txt){
@@ -267,14 +278,15 @@ function parseICS(txt){
     if(ln==='END:VEVENT'){if(e&&e.start&&!isNaN(e.start))out.push(e);e=null;continue}
     if(!e)continue;
     const i=ln.indexOf(':');if(i<0)continue;
-    const name=ln.slice(0,i).split(';')[0].toUpperCase(),val=ln.slice(i+1);
+    const head=ln.slice(0,i),name=head.split(';')[0].toUpperCase(),val=ln.slice(i+1);
+    const tz=(head.match(/TZID=("?)([^;:"]+)\1/)||[])[2];
     if(name==='SUMMARY')e.title=val.replace(/\\n/gi,' ').replace(/\\([,;\\])/g,'$1');
-    else if(name==='DTSTART'){const d=icsDate(val);e.start=d.t;e.allDay=d.all}
-    else if(name==='DTEND')e.end=icsDate(val).t;
+    else if(name==='DTSTART'){const d=icsDate(val,tz);e.start=d.t;e.allDay=d.all}
+    else if(name==='DTEND')e.end=icsDate(val,tz).t;
     else if(name==='DURATION')e.dur=val;
     else if(name==='RRULE')e.rrule=val;
-    else if(name==='EXDATE')val.split(',').forEach(v=>e.ex.push(icsDate(v).t.getTime()));
-    else if(name==='RECURRENCE-ID')e.rid=icsDate(val).t.getTime();
+    else if(name==='EXDATE')val.split(',').forEach(v=>e.ex.push(icsDate(v,tz).t.getTime()));
+    else if(name==='RECURRENCE-ID')e.rid=icsDate(val,tz).t.getTime();
     else if(name==='UID')e.uid=val;
     else if(name==='STATUS')e.status=val;
   }
